@@ -218,8 +218,6 @@ const COMPONENT_METADATA = {
       badge: '',
       badgeColor: 'error',
       disabled: false,
-      draggable: false,
-      snapToEdges: true,
       elevation: 6,
     },
     propConfigs: {
@@ -230,8 +228,6 @@ const COMPONENT_METADATA = {
       badge: { type: 'text', label: 'Badge Text' },
       badgeColor: { type: 'select', label: 'Badge Color', options: ['primary', 'secondary', 'success', 'warning', 'error'] },
       disabled: { type: 'boolean', label: 'Disabled' },
-      draggable: { type: 'boolean', label: 'Draggable' },
-      snapToEdges: { type: 'boolean', label: 'Snap to Edges' },
     },
     // FAB needs container with explicit dimensions for positioning
     requiresContainer: true,
@@ -256,7 +252,7 @@ export const ComponentDemo = () => {
   const metadata = COMPONENT_METADATA[selectedComponent];
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <StatusBar
         barStyle={theme.statusBar?.barStyle || 'dark-content'}
         backgroundColor={theme.statusBar?.backgroundColor || theme.colors.background}
@@ -326,8 +322,6 @@ export const ComponentDemo = () => {
             }}>
               <CurrentComponent 
                 {...props}
-                containerWidth={300}
-                containerHeight={200}
                 onPress={() => console.log('FAB pressed!')}
               />
               <Typography 
@@ -341,7 +335,7 @@ export const ComponentDemo = () => {
                   opacity: 0.6,
                 }}
               >
-                {props.draggable ? 'Drag me around!' : 'Tap or enable draggable'}
+                Tap me!
               </Typography>
             </View>
           ) : (

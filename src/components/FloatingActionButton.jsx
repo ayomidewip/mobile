@@ -1,13 +1,5 @@
-import React, { useRef, useState, useCallback, useEffect, forwardRef } from 'react';
-import {
-  View,
-  Pressable,
-  StyleSheet,
-  Animated,
-  PanResponder,
-  Dimensions,
-  Platform,
-} from 'react-native';
+import React, { useRef, useState, useEffect, forwardRef } from 'react';
+import { View, Pressable, StyleSheet, Animated, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { Badge } from './Badge';
@@ -18,8 +10,6 @@ import { Badge } from './Badge';
  *
  * Key Features:
  * - Complete positional awareness with 9 position variants
- * - Draggable functionality within parent container boundaries
- * - Snap to edges with configurable threshold
  * - Icon-based design with Ionicons
  * - Optional badge support with auto-positioning
  * - Multiple size variants
@@ -55,26 +45,13 @@ export const FloatingActionButton = forwardRef(({
   badgeColor = 'error',
   // Position: 'top-left', 'top', 'top-right', 'left', 'right', 'bottom-left', 'bottom', 'bottom-right'
   position = 'bottom-right',
-  // Draggable functionality
-  draggable = false,
-  // Enable snapping to container edges when dragging ends
-  snapToEdges = true,
-  // Distance from edge (in pixels) to trigger snapping
-  snapThreshold = 80,
-  // Padding from edges when snapping
+  // Padding from edges
   edgePadding = 16,
-  // Custom offset from position (can fine-tune placement)
+  // Custom offset from position
   offsetX = 0,
   offsetY = 0,
   // Shadow elevation (0-24)
   elevation = 6,
-  // Container dimensions (required for draggable or if parent doesn't have explicit dimensions)
-  containerWidth,
-  containerHeight,
-  // Callback when drag starts
-  onDragStart,
-  // Callback when drag ends with final position
-  onDragEnd,
   // Style overrides
   style,
   ...props
@@ -84,25 +61,7 @@ export const FloatingActionButton = forwardRef(({
   // Animation values
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const opacityAnim = useRef(new Animated.Value(1)).current;
-  const bounceAnim = useRef(new Animated.Value(0)).current;
-  
-  // Drag state
-  const [isDragging, setIsDragging] = useState(false);
-  const pan = useRef(new Animated.ValueXY()).current;
-  const lastPosition = useRef({ x: 0, y: 0 });
-  
-  // Get container dimensions
-  const [containerDims, setContainerDims] = useState({
-    width: containerWidth || Dimensions.get('window').width,
-    height: containerHeight || Dimensions.get('window').height,
-  });
-
-  // Update container dims if props change
-  useEffect(() => {
-    if (containerWidth && containerHeight) {
-      setContainerDims({ width: containerWidth, height: containerHeight });
-    }
-  }, [containerWidth, containerHeight]);
+  const [isDragging] = useState(false); // kept for zIndex consistency
 
   // Size configurations
   const sizes = {
@@ -181,193 +140,7 @@ export const FloatingActionButton = forwardRef(({
     return positions[position] || positions['bottom-right'];
   };
 
-  // Calculate initial position for draggable FAB
-  const calculateInitialPosition = useCallback(() => {
-    const fabSize = sizeConfig.size;
-    const { width, height } = containerDims;
-    
-    let x, y;
-    
-    switch (position) {
-      case 'top-left':
-        x = edgePadding;
-        y = edgePadding;
-        break;
-      case 'top':
-        x = (width - fabSize) / 2;
-        y = edgePadding;
-        break;
-      case 'top-right':
-        x = width - fabSize - edgePadding;
-        y = edgePadding;
-        break;
-      case 'left':
-        x = edgePadding;
-        y = (height - fabSize) / 2;
-        break;
-      case 'right':
-        x = width - fabSize - edgePadding;
-        y = (height - fabSize) / 2;
-        break;
-      case 'bottom-left':
-        x = edgePadding;
-        y = height - fabSize - edgePadding;
-        break;
-      case 'bottom':
-        x = (width - fabSize) / 2;
-        y = height - fabSize - edgePadding;
-        break;
-      case 'bottom-right':
-      default:
-        x = width - fabSize - edgePadding;
-        y = height - fabSize - edgePadding;
-        break;
-    }
-    
-    // Apply offsets
-    x += offsetX;
-    y += offsetY;
-    
-    // Clamp to bounds
-    x = Math.max(edgePadding, Math.min(x, width - fabSize - edgePadding));
-    y = Math.max(edgePadding, Math.min(y, height - fabSize - edgePadding));
-    
-    return { x, y };
-  }, [position, sizeConfig.size, containerDims, edgePadding, offsetX, offsetY]);
-
-  // Initialize drag position
-  useEffect(() => {
-    if (draggable) {
-      const initialPos = calculateInitialPosition();
-      pan.setValue(initialPos);
-      lastPosition.current = initialPos;
-    }
-  }, [draggable, calculateInitialPosition]);
-
-  // Calculate snap position
-  const calculateSnapPosition = useCallback((x, y) => {
-    if (!snapToEdges) {
-      return { x, y };
-    }
-    
-    const fabSize = sizeConfig.size;
-    const { width, height } = containerDims;
-    
-    const distanceToLeft = x - edgePadding;
-    const distanceToRight = width - x - fabSize - edgePadding;
-    const distanceToTop = y - edgePadding;
-    const distanceToBottom = height - y - fabSize - edgePadding;
-    
-    const minHorizontal = Math.min(Math.abs(distanceToLeft), Math.abs(distanceToRight));
-    const minVertical = Math.min(Math.abs(distanceToTop), Math.abs(distanceToBottom));
-    
-    let snapX = x;
-    let snapY = y;
-    
-    // Snap horizontally if within threshold
-    if (minHorizontal <= snapThreshold) {
-      if (Math.abs(distanceToLeft) < Math.abs(distanceToRight)) {
-        snapX = edgePadding;
-      } else {
-        snapX = width - fabSize - edgePadding;
-      }
-    }
-    
-    // Snap vertically if within threshold
-    if (minVertical <= snapThreshold) {
-      if (Math.abs(distanceToTop) < Math.abs(distanceToBottom)) {
-        snapY = edgePadding;
-      } else {
-        snapY = height - fabSize - edgePadding;
-      }
-    }
-    
-    return { x: snapX, y: snapY };
-  }, [snapToEdges, snapThreshold, sizeConfig.size, containerDims, edgePadding]);
-
-  // PanResponder for drag functionality
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => draggable,
-      onMoveShouldSetPanResponder: () => draggable,
-      onPanResponderGrant: () => {
-        setIsDragging(true);
-        pan.setOffset({
-          x: lastPosition.current.x,
-          y: lastPosition.current.y,
-        });
-        pan.setValue({ x: 0, y: 0 });
-        
-        // Scale up slightly when dragging starts
-        Animated.spring(scaleAnim, {
-          toValue: 1.1,
-          friction: 5,
-          useNativeDriver: true,
-        }).start();
-        
-        onDragStart?.();
-      },
-      onPanResponderMove: (_, gestureState) => {
-        const fabSize = sizeConfig.size;
-        const { width, height } = containerDims;
-        
-        // Calculate new position
-        let newX = lastPosition.current.x + gestureState.dx;
-        let newY = lastPosition.current.y + gestureState.dy;
-        
-        // Clamp to bounds
-        newX = Math.max(edgePadding, Math.min(newX, width - fabSize - edgePadding));
-        newY = Math.max(edgePadding, Math.min(newY, height - fabSize - edgePadding));
-        
-        pan.setValue({
-          x: newX - lastPosition.current.x,
-          y: newY - lastPosition.current.y,
-        });
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        setIsDragging(false);
-        pan.flattenOffset();
-        
-        const fabSize = sizeConfig.size;
-        const { width, height } = containerDims;
-        
-        // Calculate final position
-        let finalX = lastPosition.current.x + gestureState.dx;
-        let finalY = lastPosition.current.y + gestureState.dy;
-        
-        // Clamp to bounds
-        finalX = Math.max(edgePadding, Math.min(finalX, width - fabSize - edgePadding));
-        finalY = Math.max(edgePadding, Math.min(finalY, height - fabSize - edgePadding));
-        
-        // Calculate snap position
-        const snapPos = calculateSnapPosition(finalX, finalY);
-        
-        // Animate to final/snap position
-        Animated.parallel([
-          Animated.spring(pan, {
-            toValue: snapPos,
-            friction: 7,
-            tension: 40,
-            useNativeDriver: false,
-          }),
-          Animated.spring(scaleAnim, {
-            toValue: 1,
-            friction: 5,
-            useNativeDriver: true,
-          }),
-        ]).start();
-        
-        lastPosition.current = snapPos;
-        onDragEnd?.(snapPos);
-      },
-    })
-  ).current;
-
-  // Update pan responder when draggable changes
-  useEffect(() => {
-    panResponder.panHandlers.onStartShouldSetPanResponder = () => draggable;
-    panResponder.panHandlers.onMoveShouldSetPanResponder = () => draggable;
-  }, [draggable]);
+  // Draggable behavior removed for mobile; FAB is fixed at configured position.
 
   // Entry animation
   useEffect(() => {
@@ -502,14 +275,6 @@ export const FloatingActionButton = forwardRef(({
 
   // Determine positioning style
   const getContainerStyle = () => {
-    if (draggable) {
-      return {
-        position: 'absolute',
-        left: 0,
-        top: 0,
-        transform: [{ translateX: pan.x }, { translateY: pan.y }],
-      };
-    }
     return {
       position: 'absolute',
       ...getPositionStyle(),
@@ -526,7 +291,6 @@ export const FloatingActionButton = forwardRef(({
         getContainerStyle(),
         { zIndex: isDragging ? 1001 : 1000 },
       ]}
-      {...(draggable ? panResponder.panHandlers : {})}
     >
       <AnimatedPressable
         onPress={handlePress}
